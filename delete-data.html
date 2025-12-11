@@ -1,7 +1,155 @@
-<h2>Request Data Deletion</h2>
-<p>If you have used our application and would like your stored data to be deleted, you may request it any time.</p>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Request Data Deletion — BreathTrack-COPD</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f7f9fb; color:#111; padding:28px; }
+    .card { max-width:760px; margin:28px auto; background:#fff; border-radius:12px; padding:24px; box-shadow:0 6px 18px rgba(20,20,40,0.06); }
+    h1 { margin:0 0 8px; font-size:22px; }
+    p.lead { color:#444; margin-top:0; }
+    label { display:block; margin-top:14px; font-weight:600; font-size:14px; }
+    input[type="text"], input[type="email"], textarea, select {
+      width:100%; padding:10px 12px; margin-top:6px; border:1px solid #e4e7eb; border-radius:8px; font-size:14px;
+      box-sizing:border-box;
+    }
+    textarea { min-height:100px; resize:vertical; }
+    .row { display:flex; gap:12px; }
+    .col { flex:1; }
+    .help { font-size:13px; color:#666; margin-top:6px; }
+    .actions { margin-top:18px; display:flex; gap:10px; align-items:center; }
+    button { background:#0b66ff; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:700; }
+    button.secondary { background:transparent; color:#0b66ff; border:1px solid #cce0ff; }
+    .note { font-size:13px; color:#555; margin-top:12px; }
+    .success { background:#e8f9ee; color:#0b6a3a; padding:10px 12px; border-radius:8px; margin-top:12px; display:none; }
+    .error { background:#ffefef; color:#8a1c1c; padding:10px 12px; border-radius:8px; margin-top:12px; display:none; }
+    footer { margin-top:18px; font-size:13px; color:#666; }
+  </style>
+</head>
+<body>
+  <main class="card" aria-labelledby="pageTitle">
+    <h1 id="pageTitle">Request Account / Data Deletion</h1>
+    <p class="lead">Use this form to request deletion of your account and any personal data we store. We will process your request within <strong>7 business days</strong>.</p>
 
-<h3>How to Request Deletion</h3>
-<p>Email us at <b>nimmakayalamadhuri2005@gmail.com</b> with your registered details.</p>
+    <form id="deletionForm">
+      <label for="fullName">Full name</label>
+      <input id="fullName" name="fullName" type="text" placeholder="Your full name" required>
 
-<p>We will delete your information within 7 business days.</p>
+      <div class="row">
+        <div class="col">
+          <label for="email">Email address (registered)</label>
+          <input id="email" name="email" type="email" placeholder="you@example.com" required>
+        </div>
+        <div class="col">
+          <label for="username">App username / Patient ID (optional)</label>
+          <input id="username" name="username" type="text" placeholder="username or patient id">
+        </div>
+      </div>
+
+      <label for="reason">Reason for deletion (optional)</label>
+      <textarea id="reason" name="reason" placeholder="If you'd like, tell us why you want your account deleted"></textarea>
+
+      <label>
+        <input id="confirm" name="confirm" type="checkbox" required>
+        I confirm that I want my account and all related personal data deleted.
+      </label>
+      <p class="help">We may ask for verification to ensure this request is coming from the account owner.</p>
+
+      <div class="actions">
+        <!-- By default the form will use mailto fallback. -->
+        <button id="sendMailBtn" type="button">Send deletion request via email</button>
+        <button id="postServerBtn" type="button" class="secondary">Send via server (if enabled)</button>
+      </div>
+
+      <div id="success" class="success" role="status">Request sent. We'll respond to the registered email within 7 business days.</div>
+      <div id="error" class="error" role="alert">Something went wrong — try again or email us directly at <strong>your-email@gmail.com</strong>.</div>
+
+      <footer>
+        <p class="note"><strong>Privacy:</strong> We will only use the information provided here to locate and delete your account. For help, email <a href="mailto:your-email@gmail.com">your-email@gmail.com</a>.</p>
+      </footer>
+    </form>
+  </main>
+
+  <script>
+    // === CONFIGURE THIS ===
+    const SUPPORT_EMAIL = "your-email@gmail.com"; // change to your support email
+    const FORM_ACTION_URL = ""; // if you have a server endpoint, put it here (example: "https://api.example.com/delete-account")
+    // =======================
+
+    const form = document.getElementById('deletionForm');
+    const sendMailBtn = document.getElementById('sendMailBtn');
+    const postServerBtn = document.getElementById('postServerBtn');
+    const successBox = document.getElementById('success');
+    const errorBox = document.getElementById('error');
+
+    // Helper to show messages
+    function show(el) { el.style.display = 'block'; }
+    function hide(el) { el.style.display = 'none'; }
+
+    function collectData() {
+      return {
+        fullName: document.getElementById('fullName').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        username: document.getElementById('username').value.trim(),
+        reason: document.getElementById('reason').value.trim(),
+        confirmed: document.getElementById('confirm').checked,
+        requestedAt: new Date().toISOString()
+      };
+    }
+
+    // Option A: Open mail client with prefilled message (works without server)
+    sendMailBtn.addEventListener('click', () => {
+      hide(successBox); hide(errorBox);
+      if (!form.reportValidity()) return;
+
+      const d = collectData();
+      const subject = encodeURIComponent("Account / Data Deletion Request - " + (d.username || d.email));
+      let body = "Please delete my account and all personal data.\n\n";
+      body += "Full name: " + d.fullName + "\n";
+      body += "Registered email: " + d.email + "\n";
+      if (d.username) body += "Username / Patient ID: " + d.username + "\n";
+      if (d.reason) body += "\nReason: " + d.reason + "\n";
+      body += "\nI confirm that I want my account deleted. Requested at: " + d.requestedAt + "\n";
+
+      const mailto = `mailto:${encodeURIComponent(SUPPORT_EMAIL)}?subject=${subject}&body=${encodeURIComponent(body)}`;
+      // Attempt to open mail client
+      window.location.href = mailto;
+      // show a success message — note: cannot know if mail was actually sent
+      show(successBox);
+    });
+
+    // Option B: POST to your server endpoint (if configured)
+    postServerBtn.addEventListener('click', async () => {
+      hide(successBox); hide(errorBox);
+      if (!form.reportValidity()) return;
+
+      if (!FORM_ACTION_URL) {
+        errorBox.innerHTML = 'Server endpoint not configured. To enable this button, set FORM_ACTION_URL in the HTML file.';
+        show(errorBox);
+        return;
+      }
+
+      const data = collectData();
+      try {
+        const resp = await fetch(FORM_ACTION_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (!resp.ok) throw new Error('Server returned ' + resp.status);
+        show(successBox);
+      } catch (err) {
+        errorBox.innerHTML = 'Failed to send request to server: ' + err.message + 
+          '<br/>You can alternatively email: <a href="mailto:' + SUPPORT_EMAIL + '">' + SUPPORT_EMAIL + '</a>';
+        show(errorBox);
+      }
+    });
+
+    // Accessibility: allow Enter on confirm checkbox to activate button
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+    });
+  </script>
+</body>
+</html>
